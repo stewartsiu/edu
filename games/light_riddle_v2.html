@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lights Riddle</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --accent: #38bdf8;
+            --text: #f1f5f9;
+            --wire: #475569;
+            --danger: #ef4444;
+            --on: #fbbf24;
+            --off-txt: #94a3b8;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+
+        .game-card { background: var(--panel); padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 95%; max-width: 950px; text-align: center; }
+
+        /* DASHBOARD */
+        .dashboard {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.3); padding: 15px 25px; border-radius: 10px; margin-bottom: 25px; border: 1px solid #334155;
+        }
+        .score-val { font-weight: bold; color: var(--accent); margin-left: 5px; }
+
+        .btn-reset {
+            background: transparent; border: 1px solid var(--danger); color: var(--danger);
+            padding: 6px 12px; font-size: 0.85rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-reset:hover { background: var(--danger); color: white; }
+
+        /* CIRCUIT VISUALS */
+        .circuit-board {
+            display: block; margin: 30px auto; position: relative;
+            height: 340px; width: 700px;
+            background: rgba(255,255,255,0.02); border-radius: 10px;
+        }
+
+        .node {
+            width: 40px; height: 40px;
+            border: 2px solid var(--wire); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            background: #1e293b; font-weight: bold; z-index: 10;
+            position: absolute; font-family: monospace; font-size: 1.2rem; color: #94a3b8;
+        }
+
+        .node-label { position: absolute; color: #94a3b8; font-weight: bold; font-size: 1.1rem; z-index: 5; }
+
+        /* GATES */
+        .gate {
+            width: 65px; height: 65px;
+            background: #533483; border: 2px solid #9d4edd;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; font-weight: bold; z-index: 10; position: absolute;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .node.target {
+            border-color: var(--accent); color: var(--accent); border-style: dashed;
+            animation: pulse 1.5s infinite; background: #0f172a;
+        }
+
+        .node.intermediate {
+            width: 28px; height: 28px; font-size: 0.8rem; border-radius: 50%; opacity: 0.9;
+        }
+
+        .active {
+            background: var(--on) !important; color: #000 !important;
+            border-color: #d97706 !important; box-shadow: 0 0 15px var(--on);
+            opacity: 1 !important; border-style: solid !important;
+        }
+
+        /* WIRES */
+        .wire { position: absolute; background: var(--wire); z-index: 1; transition: background 0.3s; pointer-events: none; }
+        .wire::after {
+            content: ''; position: absolute; right: 0; top: -4px;
+            width: 0; height: 0;
+            border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+            border-left: 9px solid var(--wire);
+        }
+        .wire.on { background: var(--on); box-shadow: 0 0 8px rgba(251, 191, 36, 0.5); }
+        .wire.on::after { border-left-color: var(--on); }
+
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* CONTROLS */
+        .options-grid {
+            display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;
+            margin: 0 auto 30px auto; width: 100%;
+        }
+
+        button.game-btn {
+            padding: 10px; border: 2px solid #334155; border-radius: 8px;
+            cursor: pointer; font-weight: bold; font-family: inherit; font-size: 0.9rem;
+            background: rgba(0,0,0,0.2); color: var(--text);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: transform 0.1s, border-color 0.2s;
+        }
+
+        .btn-guess:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); }
+        .btn-guess:active { transform: scale(0.98); }
+        .choice-val { font-family: monospace; font-size: 1rem; color: var(--accent); margin-top: 5px; }
+
+        .btn-next { background: var(--accent); color: #0f172a; border: none; width: 200px; display: none; margin: 20px auto 0; }
+        .btn-next:hover { opacity: 0.9; }
+
+        /* BOTTOM SECTION (Split Layout) */
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr; /* More space for scratchpad */
+            gap: 20px;
+            text-align: left;
+            border-top: 1px solid #334155;
+            padding-top: 20px;
+        }
+
+        /* SCRATCH PAD */
+        .scratch-pad {
+            background: rgba(0,0,0,0.2); border: 1px solid #475569; border-radius: 8px; padding: 15px;
+        }
+        .section-title {
+            font-size: 1rem; color: #cbd5e1; font-weight: bold; margin-bottom: 15px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .scratch-row {
+            display: flex; align-items: center; gap: 15px; margin-bottom: 10px;
+            background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 6px;
+        }
+
+        .scratch-text-group { flex-grow: 1; display: flex; flex-direction: column; width: 100%; }
+
+        .scratch-label {
+            font-family: monospace; font-size: 0.9rem; color: #94a3b8;
+            margin-bottom: 4px; display: flex; gap: 10px;
+        }
+
+        .s-on { color: var(--on); font-weight: bold; }
+        .s-off { color: var(--off-txt); }
+
+        .scratch-input {
+            background: transparent; border: none; border-bottom: 1px solid #475569;
+            color: var(--accent); font-family: 'Segoe UI', sans-serif; font-size: 0.95rem; width: 100%;
+            padding: 4px 0;
+        }
+        .scratch-input:focus { outline: none; border-bottom-color: var(--accent); }
+        .scratch-input::placeholder { color: #475569; font-style: italic; font-size: 0.85rem; }
+
+        /* CHEAT SHEET */
+        .cheat-sheet { }
+        .gate-list { display: flex; flex-direction: column; gap: 10px; }
+        .gate-row {
+            background: rgba(0,0,0,0.2); border: 1px solid #334155; border-radius: 6px; padding: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .gate-title { font-weight: bold; color: var(--accent); font-size: 1rem; }
+        .gate-rule { font-size: 0.85rem; color: #cbd5e1; text-align: right; }
+
+        @media (max-width: 800px) {
+            .circuit-board { transform: scale(0.55); margin: -60px -150px; }
+            .bottom-section { grid-template-columns: 1fr; }
+            .options-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-card">
+    <div class="dashboard">
+        <div class="score-display">
+            <div>Score:<span id="totalScore" class="score-val">0</span></div>
+            <div>Streak:<span id="streak" class="score-val">0</span></div>
+        </div>
+        <button class="btn-reset" onclick="resetScore()">Reset</button>
+    </div>
+
+    <h1>Lights Riddle</h1>
+    <p id="instruction" style="color:#cbd5e1; margin-bottom: 10px;">
+        1. Look at the Output. Which combinations of lights in the middle are possible?<br>
+        2. Deduce inputs A and B.
+    </p>
+
+    <div class="circuit-board" id="board"></div>
+
+    <div id="feedback" style="font-size: 1.2rem; font-weight: bold; height: 30px; margin-bottom: 10px;"></div>
+
+    <div id="interaction-area">
+        <div id="guess-controls">
+            <div id="target-label" style="font-weight: bold; color: var(--accent); margin-bottom: 10px;">Solve for A and B:</div>
+            <div class="options-grid">
+                <button class="game-btn btn-guess" onclick="submit(0, 0)">
+                    <span>Both OFF</span> <span class="choice-val">0, 0</span>
+                </button>
+                <button class="game-btn btn-guess" onclick="submit(0, 1)">
+                    <span>A Off, B On</span> <span class="choice-val">0, 1</span>
+                </button>
+                <button class="game-btn btn-guess" onclick="submit(1, 0)">
+                    <span>A On, B Off</span> <span class="choice-val">1, 0</span>
+                </button>
+                <button class="game-btn btn-guess" onclick="submit(1, 1)">
+                    <span>Both ON</span> <span class="choice-val">1, 1</span>
+                </button>
+            </div>
+        </div>
+        <button id="btnNext" class="game-btn btn-next" onclick="setupLevel()">NEXT PUZZLE</button>
+    </div>
+
+    <div class="bottom-section" id="bottomSection">
+
+        <div class="scratch-pad">
+          <div class="section-title" style="margin-bottom: 5px;">Scratch Pad</div>
+          <div style="font-size: 0.9rem; color: #94a3b8; font-weight: normal; margin-bottom: 15px;">Think about the middle lights...</div>
+            <div class="scratch-row">
+                <div class="scratch-text-group">
+                    <span class="scratch-label">
+                        <span>Top: <span class="s-off">OFF</span></span>
+                        <span>Bottom: <span class="s-off">OFF</span></span>
+                    </span>
+                    <input type="text" class="scratch-input" placeholder="Notes...">
+                </div>
+            </div>
+
+            <div class="scratch-row">
+                <div class="scratch-text-group">
+                    <span class="scratch-label">
+                        <span>Top: <span class="s-off">OFF</span></span>
+                        <span>Bottom: <span class="s-on">ON</span></span>
+                    </span>
+                    <input type="text" class="scratch-input" placeholder="Notes...">
+                </div>
+            </div>
+
+            <div class="scratch-row">
+                <div class="scratch-text-group">
+                    <span class="scratch-label">
+                        <span>Top: <span class="s-on">ON</span></span>
+                        <span>Bottom: <span class="s-off">OFF</span></span>
+                    </span>
+                    <input type="text" class="scratch-input" placeholder="Notes...">
+                </div>
+            </div>
+
+            <div class="scratch-row">
+                <div class="scratch-text-group">
+                    <span class="scratch-label">
+                        <span>Top: <span class="s-on">ON</span></span>
+                        <span>Bottom: <span class="s-on">ON</span></span>
+                    </span>
+                    <input type="text" class="scratch-input" placeholder="Notes...">
+                </div>
+            </div>
+        </div>
+
+        <div class="cheat-sheet">
+            <div class="section-title">Gate Guide</div>
+              <div class="gate-list">
+                  <div class="gate-row">
+                      <span class="gate-title">AND (Picky)</span>
+                      <span class="gate-rule">Only ON if <b>EVERY</b> input is ON.</span>
+                  </div>
+                  <div class="gate-row">
+                      <span class="gate-title">OR (Easy-going)</span>
+                      <span class="gate-rule">ON if <b>ANY</b> input is ON.</span>
+                  </div>
+                  <div class="gate-row">
+                      <span class="gate-title">XOR (Different)</span>
+                      <span class="gate-rule">ON if inputs are <b>DIFFERENT</b>.</span>
+                  </div>
+                  <div class="gate-row">
+                      <span class="gate-title">NAND (Opposite Picky)</span>
+                      <span class="gate-rule">Always ON... unless <b>EVERY</b> input is ON.</span>
+                  </div>
+              </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const gateTypes = ['AND', 'OR', 'XOR', 'NAND'];
+    let puzzle = {};
+    let scoreData = JSON.parse(localStorage.getItem('lightsRiddleV4')) || { total: 0, streak: 0 };
+
+    const pos = {
+        a: [40, 50], b: [40, 150], c: [40, 250],
+        g1: [220, 80], g2: [220, 220],
+        mid1: [360, 98], mid2: [360, 238],
+        g3: [480, 160], out: [600, 178]
+    };
+
+    function resetScore() {
+        if(confirm("Reset score?")) {
+            scoreData = { total: 0, streak: 0 };
+            updateScoreboard();
+        }
+    }
+
+    function resetNotes() {
+        const inputs = document.querySelectorAll('.scratch-input');
+        inputs.forEach(i => i.value = "");
+    }
+
+    function runGate(v1, v2, type) {
+        const i1 = v1 ? 1 : 0;
+        const i2 = v2 ? 1 : 0;
+        if(type === 'AND') return (i1 && i2) === 1;
+        if(type === 'OR')  return (i1 || i2) === 1;
+        if(type === 'XOR') return (i1 !== i2);
+        if(type === 'NAND') return !(i1 && i2);
+        return false;
+    }
+
+    function buildCircuit(inputs, gates) {
+        const mid1 = runGate(inputs.a, inputs.b, gates.g1);
+        const mid2 = runGate(inputs.b, inputs.c, gates.g2);
+        const out  = runGate(mid1, mid2, gates.g3);
+        return {
+            a: inputs.a, b: inputs.b, c: inputs.c,
+            g1: gates.g1, g2: gates.g2, g3: gates.g3,
+            mid1, mid2, out
+        };
+    }
+
+    function setupLevel() {
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('btnNext').style.display = "none";
+        document.getElementById('guess-controls').style.display = "block";
+        resetNotes();
+
+        let uniqueFound = false;
+        let attempts = 0;
+
+        while (!uniqueFound && attempts < 5000) {
+            attempts++;
+            const g = {
+                g1: gateTypes[Math.floor(Math.random() * gateTypes.length)],
+                g2: gateTypes[Math.floor(Math.random() * gateTypes.length)],
+                g3: gateTypes[Math.floor(Math.random() * gateTypes.length)]
+            };
+            const inputs = {
+                a: Math.random() > 0.5, b: Math.random() > 0.5, c: Math.random() > 0.5
+            };
+            const currentP = buildCircuit(inputs, g);
+
+            let validIntermediateScenarios = 0;
+            if (runGate(0, 0, g.g3) === currentP.out) validIntermediateScenarios++;
+            if (runGate(0, 1, g.g3) === currentP.out) validIntermediateScenarios++;
+            if (runGate(1, 0, g.g3) === currentP.out) validIntermediateScenarios++;
+            if (runGate(1, 1, g.g3) === currentP.out) validIntermediateScenarios++;
+
+            if (validIntermediateScenarios < 2) continue;
+
+            let possibleSolutions = 0;
+            const combinations = [
+                {a: false, b: false}, {a: false, b: true},
+                {a: true, b: false}, {a: true, b: true}
+            ];
+            combinations.forEach(combo => {
+                const testP = buildCircuit({a: combo.a, b: combo.b, c: inputs.c}, g);
+                if(testP.out === currentP.out) possibleSolutions++;
+            });
+
+            if(possibleSolutions === 1) {
+                uniqueFound = true;
+                puzzle = currentP;
+            }
+        }
+        render(false);
+    }
+
+    function render(reveal) {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+
+        // Wires
+        drawWire(pos.a[0]+40, pos.a[1]+20, pos.g1[0], pos.g1[1]+20, (reveal && puzzle.a) || false);
+        drawWire(pos.b[0]+40, pos.b[1]+20, pos.g1[0], pos.g1[1]+45, (reveal && puzzle.b) || false);
+        drawWire(pos.b[0]+40, pos.b[1]+20, pos.g2[0], pos.g2[1]+20, (reveal && puzzle.b) || false);
+        drawWire(pos.c[0]+40, pos.c[1]+20, pos.g2[0], pos.g2[1]+45, puzzle.c);
+
+        drawWire(pos.g1[0]+65, pos.g1[1]+32, pos.mid1[0], pos.mid1[1]+14, reveal && puzzle.mid1);
+        drawWire(pos.mid1[0]+15, pos.mid1[1]+14, pos.g3[0], pos.g3[1]+20, reveal && puzzle.mid1);
+
+        drawWire(pos.g2[0]+65, pos.g2[1]+32, pos.mid2[0], pos.mid2[1]+14, reveal && puzzle.mid2);
+        drawWire(pos.mid2[0]+15, pos.mid2[1]+14, pos.g3[0], pos.g3[1]+45, reveal && puzzle.mid2);
+
+        drawWire(pos.g3[0]+65, pos.g3[1]+32, pos.out[0], pos.out[1]+20, puzzle.out);
+
+        // Labels
+        createLabel(pos.a[0]-25, pos.a[1]+10, "A");
+        createLabel(pos.b[0]-25, pos.b[1]+10, "B");
+        createLabel(pos.c[0]-25, pos.c[1]+10, "C");
+        createLabel(pos.out[0]+50, pos.out[1]+10, "OUT");
+
+        // Nodes
+        createNode(pos.a, puzzle.a, !reveal, false, true);
+        createNode(pos.b, puzzle.b, !reveal, false, true);
+        createNode(pos.c, puzzle.c, false, false, true);
+        createNode(pos.mid1, puzzle.mid1, !reveal, true, false);
+        createNode(pos.mid2, puzzle.mid2, !reveal, true, false);
+        createNode(pos.out, puzzle.out, false, false, false);
+
+        // Gates
+        createGate(pos.g1, puzzle.g1);
+        createGate(pos.g2, puzzle.g2);
+        createGate(pos.g3, puzzle.g3);
+    }
+
+    function createNode(p, val, hidden, isIntermediate, isInput) {
+        const n = document.createElement('div');
+        n.style.left = p[0] + 'px'; n.style.top = p[1] + 'px';
+        let classes = 'node ';
+        if(isIntermediate) classes += 'intermediate ';
+        if(hidden) {
+            if(isInput) { classes += 'target'; n.innerText = '?'; }
+            else { n.innerText = ''; }
+        } else {
+            classes += (val ? 'active' : '');
+            n.innerText = val ? '1' : '0';
+        }
+        n.className = classes;
+        document.getElementById('board').appendChild(n);
+    }
+
+    function createGate(p, type) {
+        const g = document.createElement('div');
+        g.className = 'gate';
+        g.style.left = p[0] + 'px'; g.style.top = p[1] + 'px';
+        g.innerText = type;
+        document.getElementById('board').appendChild(g);
+    }
+
+    function createLabel(x, y, txt) {
+        const l = document.createElement('div');
+        l.className = 'node-label';
+        l.style.left = x+'px'; l.style.top=y+'px';
+        l.innerText = txt;
+        document.getElementById('board').appendChild(l);
+    }
+
+    function drawWire(x1, y1, x2, y2, isOn) {
+        const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+        const angle = Math.atan2(y2-y1, x2-x1) * 180 / Math.PI;
+        const w = document.createElement('div');
+        w.className = 'wire ' + (isOn ? 'on' : '');
+        w.style.width = length + 'px'; w.style.height = '4px';
+        w.style.left = x1 + 'px'; w.style.top = y1 + 'px';
+        w.style.transform = `rotate(${angle}deg)`;
+        w.style.transformOrigin = '0 50%';
+        w.style.borderRadius = '2px';
+        document.getElementById('board').appendChild(w);
+    }
+
+    function submit(guessA, guessB) {
+        const aVal = guessA === 1;
+        const bVal = guessB === 1;
+        const fb = document.getElementById('feedback');
+
+        if(aVal === puzzle.a && bVal === puzzle.b) {
+            fb.innerText = "✓ PERFECT LOGIC!";
+            fb.style.color = "#4ade80";
+            scoreData.total += 20;
+            scoreData.streak++;
+            endRound(true);
+        } else {
+            const userMid1 = runGate(aVal, bVal, puzzle.g1);
+            const userMid2 = runGate(bVal, puzzle.c, puzzle.g2);
+            const userOut = runGate(userMid1, userMid2, puzzle.g3);
+
+            if(userOut === puzzle.out) {
+                 fb.innerText = "That works too... but not the hidden pair!";
+                 fb.style.color = "#fbbf24";
+            } else {
+                fb.innerText = "✗ Circuit Mismatch: Output would be " + (userOut ? "ON" : "OFF");
+                fb.style.color = "#ef4444";
+            }
+            scoreData.streak = 0;
+            endRound(true);
+        }
+        updateScoreboard();
+    }
+
+    function endRound(success) {
+        render(true);
+        document.getElementById('guess-controls').style.display = "none";
+        document.getElementById('btnNext').style.display = "block";
+        localStorage.setItem('lightsRiddleV4', JSON.stringify(scoreData));
+    }
+
+    function updateScoreboard() {
+        document.getElementById('totalScore').innerText = scoreData.total;
+        document.getElementById('streak').innerText = scoreData.streak;
+    }
+
+    setupLevel();
+    updateScoreboard();
+</script>
+</body>
+</html>

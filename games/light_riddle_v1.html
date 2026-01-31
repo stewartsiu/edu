@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mystery Lights</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --accent: #38bdf8;
+            --text: #f1f5f9;
+            --wire: #475569;
+            --danger: #ef4444;
+            --on: #fbbf24;
+            --off: #64748b;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+
+        .game-card { background: var(--panel); padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 95%; max-width: 850px; text-align: center; }
+
+        /* DASHBOARD */
+        .dashboard {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border: 1px solid #334155;
+        }
+        .score-display { display: flex; gap: 25px; font-size: 1.1rem; }
+        .score-val { font-weight: bold; color: var(--accent); margin-left: 5px; }
+
+        .btn-reset {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-reset:hover { background: var(--danger); color: white; }
+
+        /* CIRCUIT VISUALS */
+        .circuit-board {
+            display: block;
+            margin: 40px auto;
+            position: relative;
+            height: 240px;
+            width: 600px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 10px;
+        }
+
+        .node {
+            width: 40px; height: 36px;
+            border: 2px solid var(--wire); border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            background: #334155; font-weight: bold; z-index: 10;
+            position: absolute;
+            transition: all 0.3s;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        /* Permanent Labels (A, B, C) */
+        .node-label {
+            position: absolute;
+            color: #94a3b8;
+            font-weight: bold;
+            font-size: 1.2rem;
+            z-index: 5;
+        }
+
+        .gate {
+            width: 70px; height: 70px;
+            background: #533483; border: 2px solid #9d4edd;
+            border-radius: 50% 15% 15% 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem; z-index: 10; position: absolute;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .node.target {
+            border-color: var(--accent);
+            color: var(--accent);
+            border-style: dashed;
+            animation: pulse 1.5s infinite;
+            background: #1e293b;
+        }
+
+        .node.intermediate {
+            width: 30px; height: 30px;
+            font-size: 0.7rem;
+            opacity: 0.6;
+            border-radius: 50%;
+        }
+
+        .active { background: var(--on) !important; color: #000 !important; border-color: #d97706 !important; box-shadow: 0 0 15px var(--on); opacity: 1 !important; border-style: solid !important; }
+
+        .wire { position: absolute; background: var(--wire); z-index: 1; transition: background 0.3s; }
+        .wire::after {
+            content: '';
+            position: absolute;
+            right: 0;         /* Places it at the end of the line */
+            top: -4px;        /* Centers it vertically on the line */
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 8px solid var(--wire); /* Matches the wire color */
+        }
+        .wire.on { background: var(--on); box-shadow: 0 0 8px rgba(251, 191, 36, 0.5); }
+        .wire.on::after {
+            border-left-color: var(--on);
+        }
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* CONTROLS */
+        .btn-group { display: flex; gap: 15px; justify-content: center; margin-top: 15px; }
+        button.game-btn { padding: 12px 30px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-family: inherit; font-size: 1rem; }
+        .btn-guess { background: var(--accent); color: #0f172a; transition: transform 0.1s; }
+        .btn-guess:active { transform: scale(0.95); }
+        .btn-next { background: #64748b; color: white; display: none; margin: 20px auto 0; }
+
+        /* NEW CHEAT SHEET STYLES */
+        .cheat-sheet { margin-top: 50px; border-top: 1px solid #334155; padding-top: 20px; }
+        .cheat-sheet h3 { font-size: 1.2rem; color: #94a3b8; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .gate-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            text-align: left;
+        }
+
+        .gate-box {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .gate-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 8px;
+        }
+
+        .gate-title { font-weight: bold; color: var(--accent); font-size: 1.1rem; margin-right: 10px; }
+        .gate-desc { font-size: 0.85rem; color: #cbd5e1; font-style: italic; }
+
+        /* Mini Truth Tables */
+        .tt-table { width: 100%; font-size: 0.85rem; text-align: center; }
+        .tt-table th { padding: 4px; color: #64748b; font-size: 0.7rem; text-transform: uppercase; }
+        .tt-table td { padding: 4px; border-radius: 3px; }
+
+        /* Helper classes for 0 and 1 coloring */
+        .val-0 { color: var(--off); font-family: monospace; }
+        .val-1 { color: var(--on); font-weight: bold; font-family: monospace; text-shadow: 0 0 5px rgba(251, 191, 36, 0.3); }
+        .res-col { border-left: 1px solid #334155; background: rgba(255,255,255,0.03); }
+
+        @media (max-width: 600px) {
+            .gate-grid { grid-template-columns: 1fr; }
+            .circuit-board { transform: scale(0.55); margin: -40px -120px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-card">
+    <div class="dashboard">
+        <div class="score-display">
+            <div>Points:<span id="totalScore" class="score-val">0</span></div>
+            <div>Streak:<span id="streak" class="score-val">0</span></div>
+        </div>
+        <button class="btn-reset" onclick="resetScore()">Reset Score</button>
+    </div>
+
+    <h1>The Lights Riddle</h1>
+    <p id="instruction">Loading puzzle...</p>
+
+    <div class="circuit-board" id="board"></div>
+
+    <div id="feedback" style="font-size: 1.3rem; font-weight: bold; height: 35px; margin-bottom: 10px;"></div>
+
+    <div id="interaction-area">
+        <div id="guess-controls" style="display: flex; flex-direction: column; align-items: center;">
+            <div id="target-label" style="font-weight: bold; color: var(--accent); margin-bottom: 5px;"></div>
+            <div class="btn-group">
+                <button class="game-btn btn-guess" onclick="submit(true)">INPUT IS 1</button>
+                <button class="game-btn btn-guess" onclick="submit(false)">INPUT IS 0</button>
+            </div>
+        </div>
+        <button id="btnNext" class="game-btn btn-next" onclick="setupLevel()">NEXT CHALLENGE</button>
+    </div>
+
+    <div class="cheat-sheet">
+        <h3>Logic Gate Cheat Sheet</h3>
+
+        <div class="gate-grid">
+            <div class="gate-box">
+                <div class="gate-header">
+                    <span class="gate-title">AND</span>
+                    <span class="gate-desc">The Picky Gate</span>
+                </div>
+                <p style="font-size: 0.9rem; margin: 0 0 10px 0;">Needs <b>EVERYTHING</b> to be ON.</p>
+                <table class="tt-table">
+                    <tr><th>In A</th><th>In B</th><th>Result</th></tr>
+                    <tr><td class="val-0">0</td><td class="val-0">0</td><td class="val-0 res-col">0</td></tr>
+                    <tr><td class="val-0">0</td><td class="val-1">1</td><td class="val-0 res-col">0</td></tr>
+                    <tr><td class="val-1">1</td><td class="val-0">0</td><td class="val-0 res-col">0</td></tr>
+                    <tr><td class="val-1">1</td><td class="val-1">1</td><td class="val-1 res-col">1 (ON)</td></tr>
+                </table>
+            </div>
+
+            <div class="gate-box">
+                <div class="gate-header">
+                    <span class="gate-title">OR</span>
+                    <span class="gate-desc">The Easy-Going Gate</span>
+                </div>
+                <p style="font-size: 0.9rem; margin: 0 0 10px 0;">Needs <b>ANYTHING</b> to be ON.</p>
+                <table class="tt-table">
+                    <tr><th>In A</th><th>In B</th><th>Result</th></tr>
+                    <tr><td class="val-0">0</td><td class="val-0">0</td><td class="val-0 res-col">0</td></tr>
+                    <tr><td class="val-0">0</td><td class="val-1">1</td><td class="val-1 res-col">1 (ON)</td></tr>
+                    <tr><td class="val-1">1</td><td class="val-0">0</td><td class="val-1 res-col">1 (ON)</td></tr>
+                    <tr><td class="val-1">1</td><td class="val-1">1</td><td class="val-1 res-col">1 (ON)</td></tr>
+                </table>
+            </div>
+
+            <div class="gate-box">
+                <div class="gate-header">
+                    <span class="gate-title">XOR</span>
+                    <span class="gate-desc">The Different Detector</span>
+                </div>
+                <p style="font-size: 0.9rem; margin: 0 0 10px 0;">Only ON if inputs are <b>DIFFERENT</b>.</p>
+                <table class="tt-table">
+                    <tr><th>In A</th><th>In B</th><th>Result</th></tr>
+                    <tr><td class="val-0">0</td><td class="val-0">0</td><td class="val-0 res-col">0 (Same)</td></tr>
+                    <tr><td class="val-0">0</td><td class="val-1">1</td><td class="val-1 res-col">1 (Diff)</td></tr>
+                    <tr><td class="val-1">1</td><td class="val-0">0</td><td class="val-1 res-col">1 (Diff)</td></tr>
+                    <tr><td class="val-1">1</td><td class="val-1">1</td><td class="val-0 res-col">0 (Same)</td></tr>
+                </table>
+            </div>
+
+            <div class="gate-box">
+                <div class="gate-header">
+                    <span class="gate-title">NAND</span>
+                    <span class="gate-desc">The Opposite Game</span>
+                </div>
+                <p style="font-size: 0.9rem; margin: 0 0 10px 0;">Do an AND, then <b>FLIP</b> the result.</p>
+                <table class="tt-table">
+                    <tr><th>In A</th><th>In B</th><th>Result</th></tr>
+                    <tr><td class="val-0">0</td><td class="val-0">0</td><td class="val-1 res-col">1 (ON)</td></tr>
+                    <tr><td class="val-0">0</td><td class="val-1">1</td><td class="val-1 res-col">1 (ON)</td></tr>
+                    <tr><td class="val-1">1</td><td class="val-0">0</td><td class="val-1 res-col">1 (ON)</td></tr>
+                    <tr><td class="val-1">1</td><td class="val-1">1</td><td class="val-0 res-col">0 (OFF)</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const gates = ['AND', 'OR', 'XOR', 'NAND'];
+    let puzzle = {};
+    let hiddenInputs = [];
+    let currentGuessIndex = 0;
+
+    // Load score or default to 0
+    let scoreData = JSON.parse(localStorage.getItem('logicMasterFinal')) || { total: 0, streak: 0 };
+
+    function resetScore() {
+        if(confirm("Are you sure you want to reset your score and streak?")) {
+            scoreData = { total: 0, streak: 0 };
+            localStorage.setItem('logicMasterFinal', JSON.stringify(scoreData));
+            updateScoreboard();
+        }
+    }
+
+    function solveGate(in1, in2, type) {
+        if(type === 'AND') return in1 && in2;
+        if(type === 'OR')  return in1 || in2;
+        if(type === 'XOR') return in1 !== in2;
+        if(type === 'NAND') return !(in1 && in2);
+        return false;
+    }
+
+    function calculateCircuit(vals, g1, g2) {
+        const mid = solveGate(vals.a, vals.b, g1);
+        const out = solveGate(mid, vals.c, g2);
+        return { mid, out };
+    }
+
+    function setupLevel() {
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('btnNext').style.display = "none";
+        document.getElementById('guess-controls').style.display = "flex";
+
+        let isValid = false;
+        let attempts = 0;
+
+        // Generate puzzle until unique solution found
+        while (!isValid && attempts < 500) {
+            attempts++;
+            const p = {
+                a: Math.random() > 0.5,
+                b: Math.random() > 0.5,
+                c: Math.random() > 0.5,
+                g1: gates[Math.floor(Math.random() * gates.length)],
+                g2: gates[Math.floor(Math.random() * gates.length)]
+            };
+            const result = calculateCircuit(p, p.g1, p.g2);
+            p.mid = result.mid;
+            p.out = result.out;
+
+            const allInputs = ['a', 'b', 'c'];
+            const countToHide = Math.random() > 0.5 ? 1 : 2;
+
+            // Random shuffle
+            for (let i = allInputs.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allInputs[i], allInputs[allInputs[j]]] = [allInputs[j], allInputs[i]];
+            }
+            const currentHidden = allInputs.slice(0, countToHide);
+
+            // Check for uniqueness
+            let matchingSolutions = 0;
+            const maxCombinations = Math.pow(2, countToHide);
+
+            for(let i=0; i < maxCombinations; i++) {
+                let testVals = { ...p };
+                for(let k=0; k < countToHide; k++) {
+                    const key = currentHidden[k];
+                    testVals[key] = (i >> k) & 1 ? true : false;
+                }
+                const testRes = calculateCircuit(testVals, p.g1, p.g2);
+                if(testRes.out === p.out) matchingSolutions++;
+            }
+
+            if(matchingSolutions === 1) {
+                isValid = true;
+                puzzle = p;
+                hiddenInputs = currentHidden;
+            }
+        }
+
+        currentGuessIndex = 0;
+        updateInstruction();
+        render(false);
+    }
+
+    function updateInstruction() {
+        const target = hiddenInputs[currentGuessIndex].toUpperCase();
+        document.getElementById('target-label').innerText = `Deduce Input ${target}`;
+        document.getElementById('instruction').innerText = `(1 means the light is on and 0 means the light is off.)\nFind the missing value for ${hiddenInputs.join(' & ').toUpperCase()}`;
+    }
+
+    function render(reveal) {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+        const pos = { a: [30, 40], b: [30, 100], c: [30, 180], g1: [150, 60], mid: [280, 77], g2: [400, 115], out: [530, 132] };
+
+        // Draw Wires
+        drawWire(pos.a[0]+40, pos.a[1]+18, pos.g1[0], pos.g1[1]+20, puzzle.a && !hiddenInputs.includes('a') || reveal && puzzle.a);
+        drawWire(pos.b[0]+40, pos.b[1]+18, pos.g1[0], pos.g1[1]+50, puzzle.b && !hiddenInputs.includes('b') || reveal && puzzle.b);
+        drawWire(pos.g1[0]+70, pos.g1[1]+35, pos.mid[0], pos.mid[1]+15, puzzle.mid && reveal);
+        drawWire(pos.mid[0]+30, pos.mid[1]+15, pos.g2[0], pos.g2[1]+25, puzzle.mid && reveal);
+        drawWire(pos.c[0]+40, pos.c[1]+18, pos.g2[0], pos.g2[1]+45, puzzle.c && !hiddenInputs.includes('c') || reveal && puzzle.c);
+        drawWire(pos.g2[0]+70, pos.g2[1]+35, pos.out[0], pos.out[1]+18, puzzle.out);
+
+        // Draw Permanent Labels
+        createLabel(pos.a[0] - 25, pos.a[1] + 5, "A");
+        createLabel(pos.b[0] - 25, pos.b[1] + 5, "B");
+        createLabel(pos.c[0] - 25, pos.c[1] + 5, "C");
+        createLabel(pos.out[0] + 55, pos.out[1] + 5, "OUT");
+
+        // Draw Nodes
+        createNode('dispA', puzzle.a, pos.a, hiddenInputs.includes('a') && !reveal, false);
+        createNode('dispB', puzzle.b, pos.b, hiddenInputs.includes('b') && !reveal, false);
+        createNode('dispC', puzzle.c, pos.c, hiddenInputs.includes('c') && !reveal, false);
+        createNode('dispMid', puzzle.mid, pos.mid, false, true, !reveal);
+        createNode('dispOut', puzzle.out, pos.out, false, false);
+
+        createGate('g1', puzzle.g1, pos.g1);
+        createGate('g2', puzzle.g2, pos.g2);
+    }
+
+    function createLabel(x, y, text) {
+        const l = document.createElement('div');
+        l.className = 'node-label';
+        l.style.left = x + 'px'; l.style.top = y + 'px';
+        l.innerText = text;
+        document.getElementById('board').appendChild(l);
+    }
+
+    function createNode(id, val, p, isTarget, isIntermediate, hideValue) {
+        const n = document.createElement('div');
+        n.id = id;
+        n.style.left = p[0] + 'px'; n.style.top = p[1] + 'px';
+
+        if (isIntermediate) {
+            n.className = 'node intermediate ' + (hideValue ? '' : (val ? 'active' : ''));
+            n.innerText = hideValue ? '' : (val ? '1' : '0');
+        } else if (isTarget) {
+            n.className = 'node target';
+            n.innerText = '?';
+        } else {
+            n.className = 'node ' + (val ? 'active' : '');
+            n.innerText = val ? '1' : '0';
+        }
+        document.getElementById('board').appendChild(n);
+    }
+
+    function createGate(id, type, p) {
+        const g = document.createElement('div');
+        g.className = 'gate';
+        g.style.left = p[0] + 'px'; g.style.top = p[1] + 'px';
+        g.innerText = type;
+        document.getElementById('board').appendChild(g);
+    }
+
+    function drawWire(x1, y1, x2, y2, isActive) {
+        const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+        const angle = Math.atan2(y2-y1, x2-x1) * 180 / Math.PI;
+        const w = document.createElement('div');
+        w.className = 'wire ' + (isActive ? 'on' : '');
+        w.style.width = length + 'px'; w.style.height = '2px';
+        w.style.left = x1 + 'px'; w.style.top = y1 + 'px';
+        w.style.transform = `rotate(${angle}deg)`;
+        w.style.transformOrigin = '0 50%';
+        document.getElementById('board').appendChild(w);
+    }
+
+    function submit(guess) {
+        const currentKey = hiddenInputs[currentGuessIndex];
+        const correct = puzzle[currentKey];
+        const fb = document.getElementById('feedback');
+
+        if(guess === correct) {
+            currentGuessIndex++;
+            if(currentGuessIndex >= hiddenInputs.length) {
+                fb.innerText = "✓ PERFECT LOGIC! +10";
+                fb.style.color = "#22c55e";
+                scoreData.total += 10;
+                scoreData.streak++;
+                endRound();
+            } else {
+                fb.innerText = "Correct! One more...";
+                fb.style.color = "#38bdf8";
+                updateInstruction();
+            }
+        } else {
+            fb.innerText = "✗ Sorry! -10";
+            fb.style.color = "#ef4444";
+            scoreData.total = Math.max(0, scoreData.total - 10);
+            scoreData.streak = 0;
+            endRound();
+        }
+        updateScoreboard();
+    }
+
+    function endRound() {
+        render(true);
+        document.getElementById('guess-controls').style.display = "none";
+        document.getElementById('btnNext').style.display = "block";
+        localStorage.setItem('logicMasterFinal', JSON.stringify(scoreData));
+    }
+
+    function updateScoreboard() {
+        document.getElementById('totalScore').innerText = scoreData.total;
+        document.getElementById('streak').innerText = scoreData.streak;
+    }
+
+    setupLevel();
+    updateScoreboard();
+</script>
+</body>
+</html>
