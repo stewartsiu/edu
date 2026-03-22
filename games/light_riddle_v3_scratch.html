@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lights Riddle v3 - Bayesian Intuition</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --accent: #38bdf8;
+            --text: #f1f5f9;
+            --wire: #475569;
+            --danger: #ef4444;
+            --on: #fbbf24;
+            --off-txt: #94a3b8;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; }
+
+        .game-card { background: var(--panel); padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 95%; max-width: 950px; text-align: center; }
+
+        /* DASHBOARD */
+        .dashboard {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.3); padding: 15px 25px; border-radius: 10px; margin-bottom: 25px; border: 1px solid #334155;
+        }
+        .score-val { font-weight: bold; color: var(--accent); margin-left: 5px; }
+
+        .btn-reset {
+            background: transparent; border: 1px solid var(--danger); color: var(--danger);
+            padding: 6px 12px; font-size: 0.85rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-reset:hover { background: var(--danger); color: white; }
+
+        /* CIRCUIT VISUALS */
+        .circuit-board {
+            display: block; margin: 30px auto; position: relative;
+            height: 450px; width: 850px;
+            background: rgba(255,255,255,0.02); border-radius: 10px;
+        }
+
+        .node {
+            width: 40px; height: 40px;
+            border: 2px solid var(--wire); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            background: #1e293b; font-weight: bold; z-index: 10;
+            position: absolute; font-family: monospace; font-size: 1.2rem; color: #94a3b8;
+        }
+
+        .node-label { position: absolute; color: #94a3b8; font-weight: bold; font-size: 1.1rem; z-index: 5; }
+
+        /* GATES */
+        .gate {
+            width: 65px; height: 65px;
+            background: #533483; border: 2px solid #9d4edd;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; font-weight: bold; z-index: 10; position: absolute;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .node.target {
+            border-color: var(--accent); color: var(--accent); border-style: dashed;
+            animation: pulse 1.5s infinite; background: #0f172a;
+        }
+
+        .node.intermediate {
+            width: 28px; height: 28px; font-size: 0.8rem; border-radius: 50%; opacity: 0.9;
+        }
+
+        .active {
+            background: var(--on) !important; color: #000 !important;
+            border-color: #d97706 !important; box-shadow: 0 0 15px var(--on);
+            opacity: 1 !important; border-style: solid !important;
+        }
+
+        /* WIRES */
+        .wire { position: absolute; background: var(--wire); z-index: 1; transition: background 0.3s; pointer-events: none; }
+        .wire::after {
+            content: ''; position: absolute; right: 0; top: -4px;
+            width: 0; height: 0;
+            border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+            border-left: 9px solid var(--wire);
+        }
+        .wire.on { background: var(--on); box-shadow: 0 0 8px rgba(251, 191, 36, 0.5); }
+        .wire.on::after { border-left-color: var(--on); }
+
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* CONTROLS */
+        .options-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+            margin: 0 auto 30px auto; width: 60%;
+        }
+
+        button.game-btn {
+            padding: 15px; border: 2px solid #334155; border-radius: 8px;
+            cursor: pointer; font-weight: bold; font-family: inherit; font-size: 1rem;
+            background: rgba(0,0,0,0.2); color: var(--text);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: transform 0.1s, border-color 0.2s;
+        }
+
+        .btn-guess:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); }
+        .btn-guess:active { transform: scale(0.98); }
+
+        .btn-next { background: var(--accent); color: #0f172a; border: none; width: 250px; display: none; margin: 20px auto 0; font-size: 1.1rem; }
+        .btn-next:hover { opacity: 0.9; }
+
+        /* BOTTOM SECTION */
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 20px;
+            text-align: left;
+            border-top: 1px solid #334155;
+            padding-top: 20px;
+        }
+
+        /* SCRATCH PAD */
+        .scratch-pad {
+            background: rgba(0,0,0,0.2); border: 1px solid #475569; border-radius: 8px; padding: 15px;
+        }
+        .section-title {
+            font-size: 1rem; color: #cbd5e1; font-weight: bold; margin-bottom: 15px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .scratch-textarea {
+            width: 100%; height: 180px; background: rgba(0,0,0,0.3); border: 1px solid #334155; border-radius: 6px; 
+            padding: 10px; color: var(--accent); font-family: monospace; font-size: 1rem; resize: vertical; box-sizing: border-box;
+        }
+        .scratch-textarea:focus { outline: none; border-color: var(--accent); }
+        .scratch-textarea::placeholder { color: #475569; font-style: italic; font-family: 'Segoe UI', sans-serif; font-size: 0.9rem; }
+
+        /* CHEAT SHEET */
+        .gate-list { display: flex; flex-direction: column; gap: 10px; }
+        .gate-row {
+            background: rgba(0,0,0,0.2); border: 1px solid #334155; border-radius: 6px; padding: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .gate-title { font-weight: bold; color: var(--accent); font-size: 1rem; }
+        .gate-rule { font-size: 0.85rem; color: #cbd5e1; text-align: right; }
+
+        #feedback {
+            font-size: 1.1rem; font-weight: bold; min-height: 55px; margin-bottom: 15px; line-height: 1.4; text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .circuit-board { transform: scale(0.7); margin: -50px -100px; }
+            .bottom-section { grid-template-columns: 1fr; }
+            .options-grid { width: 90%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="game-card">
+    <div class="dashboard">
+        <div class="score-display">
+            <div>Score:<span id="totalScore" class="score-val">0</span></div>
+            <div>Streak:<span id="streak" class="score-val">0</span></div>
+        </div>
+        <button class="btn-reset" onclick="resetScore()">Reset</button>
+    </div>
+
+    <h1>Lights Riddle v3</h1>
+    <p id="instruction" style="color:#cbd5e1; margin-bottom: 10px;">
+        1. 3 lights are hidden. Look at the revealed lights and the final output.<br>
+        2. Find out which of the 8 combinations work, then guess if the TARGET light is ON or OFF!
+    </p>
+
+    <div class="circuit-board" id="board"></div>
+
+    <div id="feedback"></div>
+
+    <div id="interaction-area">
+        <div id="guess-controls">
+            <div id="target-label" style="font-size: 1.1rem; font-weight: bold; color: var(--accent); margin-bottom: 15px;">Target is X: Can you guess if it's ON or OFF?</div>
+            <div class="options-grid">
+                <button class="game-btn btn-guess" onclick="submit(0)">
+                    <span>Guess 0 (OFF)</span> 
+                </button>
+                <button class="game-btn btn-guess" onclick="submit(1)">
+                    <span>Guess 1 (ON)</span> 
+                </button>
+            </div>
+        </div>
+        <button id="btnNext" class="game-btn btn-next" onclick="setupLevel()">NEXT PUZZLE</button>
+    </div>
+
+    <div class="bottom-section" id="bottomSection">
+        <div class="scratch-pad">
+          <div class="section-title" style="margin-bottom: 5px;">Scratch Pad</div>
+          <div style="font-size: 0.9rem; color: #94a3b8; font-weight: normal; margin-bottom: 10px;" id="scratch-desc">Hint: Try to find out which combinations of shapes are impossible!</div>
+          <textarea id="scratch-textarea" class="scratch-textarea" placeholder="Take notes here...&#10;Example: If A is ON and B is OFF, then C must be OFF..."></textarea>
+        </div>
+
+        <div class="cheat-sheet">
+            <div class="section-title">Gate Guide (No NAND here)</div>
+              <div class="gate-list">
+                  <div class="gate-row">
+                      <span class="gate-title">AND (Picky)</span>
+                      <span class="gate-rule">Only ON if <b>EVERY</b> input is ON.</span>
+                  </div>
+                  <div class="gate-row">
+                      <span class="gate-title">OR (Easy-going)</span>
+                      <span class="gate-rule">ON if <b>ANY</b> input is ON.</span>
+                  </div>
+                  <div class="gate-row">
+                      <span class="gate-title">XOR (Different)</span>
+                      <span class="gate-rule">ON if inputs are <b>DIFFERENT</b>.</span>
+                  </div>
+              </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const gateTypes = ['AND', 'OR', 'XOR'];
+    let puzzle = {};
+    let scoreData = JSON.parse(localStorage.getItem('lightsRiddleV3')) || { total: 0, streak: 0 };
+
+    const pos = {
+        a: [40, 40], b: [40, 120], c: [40, 200], d: [40, 280], e: [40, 360],
+        g1: [200, 68], g2: [200, 148], g3: [200, 228], g4: [200, 308],
+        mid1: [300, 86], mid2: [300, 166], mid3: [300, 246], mid4: [300, 326],
+        g5: [420, 108], g6: [420, 268],
+        mid5: [520, 126], mid6: [520, 286],
+        g7: [620, 188], out: [750, 200]
+    };
+
+    function resetScore() {
+        if(confirm("Reset score?")) {
+            scoreData = { total: 0, streak: 0 };
+            updateScoreboard();
+        }
+    }
+
+    function runGate(v1, v2, type) {
+        const i1 = v1 ? 1 : 0;
+        const i2 = v2 ? 1 : 0;
+        if(type === 'AND') return (i1 && i2) === 1;
+        if(type === 'OR')  return (i1 || i2) === 1;
+        if(type === 'XOR') return (i1 !== i2);
+        return false;
+    }
+
+    function buildCircuit(inputs, gates) {
+        const mid1 = runGate(inputs.a, inputs.b, gates.g1);
+        const mid2 = runGate(inputs.b, inputs.c, gates.g2);
+        const mid3 = runGate(inputs.c, inputs.d, gates.g3);
+        const mid4 = runGate(inputs.d, inputs.e, gates.g4);
+
+        const mid5 = runGate(mid1, mid2, gates.g5);
+        const mid6 = runGate(mid3, mid4, gates.g6);
+
+        const out  = runGate(mid5, mid6, gates.g7);
+        return {
+            a: inputs.a, b: inputs.b, c: inputs.c, d: inputs.d, e: inputs.e,
+            g1: gates.g1, g2: gates.g2, g3: gates.g3, g4: gates.g4,
+            g5: gates.g5, g6: gates.g6, g7: gates.g7,
+            mid1, mid2, mid3, mid4, mid5, mid6, out
+        };
+    }
+
+    function setupLevel() {
+        document.getElementById('feedback').innerHTML = "";
+        document.getElementById('btnNext').style.display = "none";
+        document.getElementById('guess-controls').style.display = "block";
+
+        let uniqueFound = false;
+        let attempts = 0;
+
+        while (!uniqueFound && attempts < 10000) {
+            attempts++;
+            const g = {
+                g1: gateTypes[Math.floor(Math.random() * gateTypes.length)],
+                g2: gateTypes[Math.floor(Math.random() * gateTypes.length)],
+                g3: gateTypes[Math.floor(Math.random() * gateTypes.length)],
+                g4: gateTypes[Math.floor(Math.random() * gateTypes.length)],
+                g5: gateTypes[Math.floor(Math.random() * gateTypes.length)],
+                g6: gateTypes[Math.floor(Math.random() * gateTypes.length)],
+                g7: gateTypes[Math.floor(Math.random() * gateTypes.length)]
+            };
+
+            const trueInputs = {
+                a: Math.random() > 0.5, b: Math.random() > 0.5, 
+                c: Math.random() > 0.5, d: Math.random() > 0.5, e: Math.random() > 0.5
+            };
+
+            const currentP = buildCircuit(trueInputs, g);
+            
+            // Pick 3 hidden bits
+            const allInputs = ['a', 'b', 'c', 'd', 'e'];
+            const shuffled = [...allInputs].sort(() => 0.5 - Math.random());
+            const hiddenVars = shuffled.slice(0, 3);
+            const revealedVars = shuffled.slice(3, 5);
+
+            let validConfigs = [];
+            for(let i=0; i<8; i++) {
+                const testInputs = {...trueInputs};
+                testInputs[hiddenVars[0]] = (i & 4) > 0;
+                testInputs[hiddenVars[1]] = (i & 2) > 0;
+                testInputs[hiddenVars[2]] = (i & 1) > 0;
+                const testP = buildCircuit(testInputs, g);
+                if(testP.out === currentP.out) {
+                    validConfigs.push({
+                        state: testInputs,
+                        p: testP
+                    });
+                }
+            }
+
+            let validTargets = [];
+            for(let t of hiddenVars) {
+                let ones = 0;
+                for(let c of validConfigs) {
+                    if(c.state[t]) ones++;
+                }
+                const prob = ones / validConfigs.length;
+                if(prob > 0 && prob < 1 && prob !== 0.5) {
+                    validTargets.push({ target: t, prob: prob, ones: ones, total: validConfigs.length });
+                }
+            }
+
+            if(validTargets.length > 0) {
+                uniqueFound = true;
+                const t = validTargets[Math.floor(Math.random() * validTargets.length)];
+                currentP.hidden = hiddenVars;
+                currentP.revealed = revealedVars;
+                currentP.target = t.target;
+                currentP.prob = t.prob;
+                currentP.ones = t.ones;
+                currentP.total = t.total;
+                puzzle = currentP;
+            }
+        }
+        
+        render(false);
+        if (document.getElementById('scratch-textarea')) document.getElementById('scratch-textarea').value = '';
+        document.getElementById('target-label').innerText = "Target is " + puzzle.target.toUpperCase() + ": Can you guess if it's ON or OFF?";
+    }
+
+    // Scratchpad logic is now a simple text area without dynamic rows
+
+    function render(reveal) {
+        const board = document.getElementById('board');
+        board.innerHTML = '';
+
+        const isRev = (k) => reveal || !puzzle.hidden.includes(k);
+
+        drawWire(pos.a[0]+40, pos.a[1]+20, pos.g1[0], pos.g1[1]+20, isRev('a') ? puzzle.a : false);
+        drawWire(pos.b[0]+40, pos.b[1]+20, pos.g1[0], pos.g1[1]+45, isRev('b') ? puzzle.b : false);
+        drawWire(pos.b[0]+40, pos.b[1]+20, pos.g2[0], pos.g2[1]+20, isRev('b') ? puzzle.b : false);
+        drawWire(pos.c[0]+40, pos.c[1]+20, pos.g2[0], pos.g2[1]+45, isRev('c') ? puzzle.c : false);
+        drawWire(pos.c[0]+40, pos.c[1]+20, pos.g3[0], pos.g3[1]+20, isRev('c') ? puzzle.c : false);
+        drawWire(pos.d[0]+40, pos.d[1]+20, pos.g3[0], pos.g3[1]+45, isRev('d') ? puzzle.d : false);
+        drawWire(pos.d[0]+40, pos.d[1]+20, pos.g4[0], pos.g4[1]+20, isRev('d') ? puzzle.d : false);
+        drawWire(pos.e[0]+40, pos.e[1]+20, pos.g4[0], pos.g4[1]+45, isRev('e') ? puzzle.e : false);
+
+        drawWire(pos.g1[0]+65, pos.g1[1]+32, pos.mid1[0], pos.mid1[1]+14, reveal && puzzle.mid1);
+        drawWire(pos.mid1[0]+20, pos.mid1[1]+14, pos.g5[0], pos.g5[1]+20, reveal && puzzle.mid1);
+
+        drawWire(pos.g2[0]+65, pos.g2[1]+32, pos.mid2[0], pos.mid2[1]+14, reveal && puzzle.mid2);
+        drawWire(pos.mid2[0]+20, pos.mid2[1]+14, pos.g5[0], pos.g5[1]+45, reveal && puzzle.mid2);
+
+        drawWire(pos.g3[0]+65, pos.g3[1]+32, pos.mid3[0], pos.mid3[1]+14, reveal && puzzle.mid3);
+        drawWire(pos.mid3[0]+20, pos.mid3[1]+14, pos.g6[0], pos.g6[1]+20, reveal && puzzle.mid3);
+
+        drawWire(pos.g4[0]+65, pos.g4[1]+32, pos.mid4[0], pos.mid4[1]+14, reveal && puzzle.mid4);
+        drawWire(pos.mid4[0]+20, pos.mid4[1]+14, pos.g6[0], pos.g6[1]+45, reveal && puzzle.mid4);
+
+        drawWire(pos.g5[0]+65, pos.g5[1]+32, pos.mid5[0], pos.mid5[1]+14, reveal && puzzle.mid5);
+        drawWire(pos.mid5[0]+20, pos.mid5[1]+14, pos.g7[0], pos.g7[1]+20, reveal && puzzle.mid5);
+
+        drawWire(pos.g6[0]+65, pos.g6[1]+32, pos.mid6[0], pos.mid6[1]+14, reveal && puzzle.mid6);
+        drawWire(pos.mid6[0]+20, pos.mid6[1]+14, pos.g7[0], pos.g7[1]+45, reveal && puzzle.mid6);
+
+        drawWire(pos.g7[0]+65, pos.g7[1]+32, pos.out[0], pos.out[1]+20, puzzle.out);
+
+        createLabel(pos.a[0]-25, pos.a[1]+10, "A");
+        createLabel(pos.b[0]-25, pos.b[1]+10, "B");
+        createLabel(pos.c[0]-25, pos.c[1]+10, "C");
+        createLabel(pos.d[0]-25, pos.d[1]+10, "D");
+        createLabel(pos.e[0]-25, pos.e[1]+10, "E");
+        createLabel(pos.out[0]+50, pos.out[1]+10, "OUT");
+
+        createNode(pos.a, puzzle.a, !isRev('a'), false, true, puzzle.target === 'a' && !reveal);
+        createNode(pos.b, puzzle.b, !isRev('b'), false, true, puzzle.target === 'b' && !reveal);
+        createNode(pos.c, puzzle.c, !isRev('c'), false, true, puzzle.target === 'c' && !reveal);
+        createNode(pos.d, puzzle.d, !isRev('d'), false, true, puzzle.target === 'd' && !reveal);
+        createNode(pos.e, puzzle.e, !isRev('e'), false, true, puzzle.target === 'e' && !reveal);
+
+        createNode(pos.mid1, puzzle.mid1, !reveal, true, false, false);
+        createNode(pos.mid2, puzzle.mid2, !reveal, true, false, false);
+        createNode(pos.mid3, puzzle.mid3, !reveal, true, false, false);
+        createNode(pos.mid4, puzzle.mid4, !reveal, true, false, false);
+        createNode(pos.mid5, puzzle.mid5, !reveal, true, false, false);
+        createNode(pos.mid6, puzzle.mid6, !reveal, true, false, false);
+
+        createNode(pos.out, puzzle.out, false, false, false, false);
+
+        createGate(pos.g1, puzzle.g1);
+        createGate(pos.g2, puzzle.g2);
+        createGate(pos.g3, puzzle.g3);
+        createGate(pos.g4, puzzle.g4);
+        createGate(pos.g5, puzzle.g5);
+        createGate(pos.g6, puzzle.g6);
+        createGate(pos.g7, puzzle.g7);
+    }
+
+    function createNode(p, val, hidden, isIntermediate, isInput, isTarget) {
+        const n = document.createElement('div');
+        n.style.left = p[0] + 'px'; n.style.top = p[1] + 'px';
+        let classes = 'node ';
+        if(isIntermediate) classes += 'intermediate ';
+        if(isTarget) classes += 'target ';
+        
+        if(hidden) {
+            if(isInput) { n.innerText = '?'; }
+            else { n.innerText = ''; }
+        } else {
+            classes += (val ? 'active' : '');
+            n.innerText = val ? '1' : '0';
+        }
+        n.className = classes;
+        document.getElementById('board').appendChild(n);
+    }
+
+    function createGate(p, type) {
+        const g = document.createElement('div');
+        g.className = 'gate';
+        g.style.left = p[0] + 'px'; g.style.top = p[1] + 'px';
+        g.innerText = type;
+        document.getElementById('board').appendChild(g);
+    }
+
+    function createLabel(x, y, txt) {
+        const l = document.createElement('div');
+        l.className = 'node-label';
+        l.style.left = x+'px'; l.style.top=y+'px';
+        l.innerText = txt;
+        document.getElementById('board').appendChild(l);
+    }
+
+    function drawWire(x1, y1, x2, y2, isOn) {
+        const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+        const angle = Math.atan2(y2-y1, x2-x1) * 180 / Math.PI;
+        const w = document.createElement('div');
+        w.className = 'wire ' + (isOn ? 'on' : '');
+        w.style.width = length + 'px'; w.style.height = '4px';
+        w.style.left = x1 + 'px'; w.style.top = y1 + 'px';
+        w.style.transform = `rotate(${angle}deg)`;
+        w.style.transformOrigin = '0 50%';
+        w.style.borderRadius = '2px';
+        document.getElementById('board').appendChild(w);
+    }
+
+    function submit(guessValue) {
+        const guessBool = guessValue === 1;
+        const fb = document.getElementById('feedback');
+
+        const rationalBool = puzzle.prob > 0.5; 
+        const isRational = guessBool === rationalBool;
+        const isCorrect = guessBool === puzzle[puzzle.target];
+
+        let pickedProbPercent = Math.round(guessBool ? puzzle.prob * 100 : (1 - puzzle.prob) * 100);
+        let onesCount = guessBool ? puzzle.ones : puzzle.total - puzzle.ones;
+
+        let msg = `Out of ${puzzle.total} working combinations, ${puzzle.target.toUpperCase()} is ${guessBool ? 'ON' : 'OFF'} in ${onesCount} of them (${pickedProbPercent}% chance).<br>`;
+
+        if (isCorrect) {
+            if (isRational) {
+                msg += `Smart guess! The light was definitely ${guessBool ? 'ON' : 'OFF'}! (+10 pts)`;
+            } else {
+                msg += `Super lucky guess! The light was ${guessBool ? 'ON' : 'OFF'} against the odds! (+10 pts)`;
+            }
+            fb.style.color = "#4ade80";
+            scoreData.total += 10;
+            scoreData.streak++;
+        } else {
+            if (isRational) {
+                msg += `Great thinking, but you got unlucky! The light was actually ${!guessBool ? 'ON' : 'OFF'}.`;
+                fb.style.color = "#fbbf24";
+            } else {
+                msg += `Oops! You tried a risky guess and missed. The light was actually ${!guessBool ? 'ON' : 'OFF'}.`;
+                fb.style.color = "#ef4444";
+            }
+            scoreData.streak = 0;
+        }
+
+        fb.innerHTML = msg;
+        endRound(true);
+        updateScoreboard();
+    }
+
+    function endRound(success) {
+        render(true);
+        document.getElementById('guess-controls').style.display = "none";
+        document.getElementById('btnNext').style.display = "block";
+        localStorage.setItem('lightsRiddleV3', JSON.stringify(scoreData));
+    }
+
+    function updateScoreboard() {
+        document.getElementById('totalScore').innerText = scoreData.total;
+        document.getElementById('streak').innerText = scoreData.streak;
+    }
+
+    setupLevel();
+    updateScoreboard();
+</script>
+</body>
+</html>
