@@ -226,6 +226,27 @@
             }
         }
 
+        /* IMAGINATION MODE */
+        .imagination-mode {
+            filter: hue-rotate(240deg) saturate(1.5) brightness(0.8);
+            border: 2px dashed #c084fc !important;
+            box-shadow: 0 0 30px rgba(192, 132, 252, 0.4);
+            transition: all 0.3s;
+        }
+
+        .imagination-mode::after {
+            content: "IMAGINING ONE POSSIBILITY...";
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #c084fc;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            z-index: 100;
+        }
+
         /* CONTROLS */
         .options-grid {
             display: grid;
@@ -379,7 +400,7 @@
         }
 
         .s-on {
-            color: var(--on);
+            color: var(--on) !important;
             font-weight: bold;
         }
 
@@ -413,13 +434,14 @@
 
     <div class="game-card">
         <div class="dashboard">
-            <div class="score-display">
+            <div class="score-display" style="display: flex; gap: 25px; align-items: center; flex-wrap: wrap;">
                 <div>Score:<span id="totalScore" class="score-val">0</span></div>
                 <div>Streak:<span id="streak" class="score-val">0</span></div>
-                <div style="margin-left: 20px;">
-                    <label for="levelSelect" style="color:#cbd5e1; font-size: 0.9rem;">Level:</label>
+                <div style="display: flex; align-items: center; margin-left: 10px;">
+                    <label for="levelSelect"
+                        style="color:#cbd5e1; font-size: 0.95rem; margin-right: 10px;">Level:</label>
                     <select id="levelSelect" onchange="changeLevel()"
-                        style="margin-left:5px; padding:3px; border-radius:4px; font-weight:bold; cursor:pointer; background:rgba(0,0,0,0.5); color:var(--accent); border:1px solid var(--accent);">
+                        style="padding:5px; border-radius:4px; font-weight:bold; cursor:pointer; background:rgba(0,0,0,0.5); color:var(--accent); border:1px solid var(--accent);">
                         <option value="1">1 (3 Gates, 2 Hidden)</option>
                         <option value="2">2 (7 Gates, 2 Hidden)</option>
                         <option value="3">3 (7 Gates, 3 Hidden)</option>
@@ -442,6 +464,14 @@
 
         <div class="circuit-board" id="board"></div>
 
+        <div id="hint-area" style="text-align: center; margin-bottom: 20px; display: none; user-select: none;">
+            <button id="btnHint" class="game-btn" onmousedown="showHintVisual()" onmouseup="hideHintVisual()"
+                onmouseleave="hideHintVisual()" ontouchstart="showHintVisual()" ontouchend="hideHintVisual()"
+                style="margin: 0 auto; background: rgba(192, 132, 252, 0.2); border-color: var(--level); color: var(--text); padding: 10px 15px; font-size: 0.95rem; cursor: pointer; user-select: none; touch-action: none;">
+                💡 Hold to see one that could work (No promises!) (Cost: Half points)
+            </button>
+        </div>
+
         <div id="feedback"></div>
 
         <div id="interaction-area">
@@ -451,10 +481,10 @@
                     X: Can you guess if it's ON or OFF?</div>
                 <div class="options-grid">
                     <button class="game-btn btn-guess" onclick="submit(0)">
-                        <span>Guess 0 (OFF)</span>
+                        <span>Guess 0 (<span style="color:grey;font-weight:bold;">OFF</span>)</span>
                     </button>
                     <button class="game-btn btn-guess" onclick="submit(1)">
-                        <span>Guess 1 (ON)</span>
+                        <span>Guess 1 (<span class="s-on">ON</span>)</span>
                     </button>
                 </div>
             </div>
@@ -463,11 +493,14 @@
 
         <div class="bottom-section" id="bottomSection">
             <div class="scratch-pad">
-                <div class="section-title" style="margin-bottom: 5px;">Scratch Pad</div>
-                <div style="font-size: 0.9rem; color: #94a3b8; font-weight: normal; margin-bottom: 10px;"
-                    id="scratch-desc">Which combinations give the right output?</div>
-                <textarea id="scratch-textarea" class="scratch-textarea"
-                    placeholder="Take notes here...&#10;"></textarea>
+                <div id="scratch-input-area">
+                    <div class="section-title" style="margin-bottom: 5px;">Scratch Pad</div>
+                    <div style="font-size: 0.9rem; color: #94a3b8; font-weight: normal; margin-bottom: 10px;"
+                        id="scratch-desc">Which combinations give the right output?</div>
+                    <textarea id="scratch-textarea" class="scratch-textarea"
+                        placeholder="Take notes here...&#10;"></textarea>
+                </div>
+                <div id="valid-combinations-area" style="display: none;"></div>
             </div>
 
             <div class="cheat-sheet">
@@ -491,17 +524,17 @@
                             </tr>
                             <tr>
                                 <td>0</td>
-                                <td>1</td>
+                                <td class="s-on">1</td>
                                 <td>0</td>
                             </tr>
                             <tr>
-                                <td>1</td>
+                                <td class="s-on">1</td>
                                 <td>0</td>
                                 <td>0</td>
                             </tr>
                             <tr>
-                                <td>1</td>
-                                <td>1</td>
+                                <td class="s-on">1</td>
+                                <td class="s-on">1</td>
                                 <td class="s-on">1</td>
                             </tr>
                         </table>
@@ -524,17 +557,17 @@
                             </tr>
                             <tr>
                                 <td>0</td>
-                                <td>1</td>
+                                <td class="s-on">1</td>
                                 <td class="s-on">1</td>
                             </tr>
                             <tr>
-                                <td>1</td>
+                                <td class="s-on">1</td>
                                 <td>0</td>
                                 <td class="s-on">1</td>
                             </tr>
                             <tr>
-                                <td>1</td>
-                                <td>1</td>
+                                <td class="s-on">1</td>
+                                <td class="s-on">1</td>
                                 <td class="s-on">1</td>
                             </tr>
                         </table>
@@ -557,17 +590,17 @@
                             </tr>
                             <tr>
                                 <td>0</td>
-                                <td>1</td>
+                                <td class="s-on">1</td>
                                 <td class="s-on">1</td>
                             </tr>
                             <tr>
-                                <td>1</td>
+                                <td class="s-on">1</td>
                                 <td>0</td>
                                 <td class="s-on">1</td>
                             </tr>
                             <tr>
-                                <td>1</td>
-                                <td>1</td>
+                                <td class="s-on">1</td>
+                                <td class="s-on">1</td>
                                 <td>0</td>
                             </tr>
                         </table>
@@ -737,12 +770,12 @@
 
                 drawWire(pos.g7[0] + 65, pos.g7[1] + 32, pos.out[0], pos.out[1] + 20, puzzle.out);
 
-                createLabel(pos.a[0] - 25, pos.a[1] + 10, "A");
-                createLabel(pos.b[0] - 25, pos.b[1] + 10, "B");
-                createLabel(pos.c[0] - 25, pos.c[1] + 10, "C");
-                createLabel(pos.d[0] - 25, pos.d[1] + 10, "D");
-                createLabel(pos.e[0] - 25, pos.e[1] + 10, "E");
-                createLabel(pos.out[0] + 50, pos.out[1] + 10, "OUT");
+                createLabel(pos.a[0] - 25, pos.a[1] + 10, "A", puzzle.target === 'a');
+                createLabel(pos.b[0] - 25, pos.b[1] + 10, "B", puzzle.target === 'b');
+                createLabel(pos.c[0] - 25, pos.c[1] + 10, "C", puzzle.target === 'c');
+                createLabel(pos.d[0] - 25, pos.d[1] + 10, "D", puzzle.target === 'd');
+                createLabel(pos.e[0] - 25, pos.e[1] + 10, "E", puzzle.target === 'e');
+                createLabel(pos.out[0] + 50, pos.out[1] + 10, "Out");
 
                 createNode(pos.a, puzzle.a, !isRev('a'), false, true, puzzle.target === 'a' && !reveal);
                 createNode(pos.b, puzzle.b, !isRev('b'), false, true, puzzle.target === 'b' && !reveal);
@@ -802,9 +835,9 @@
 
                     drawWire(pos.g3[0] + 65, pos.g3[1] + 32, pos.out[0], pos.out[1] + 20, puzzle.out);
 
-                    createLabel(pos.a[0] - 25, pos.a[1] + 10, "A");
-                    createLabel(pos.b[0] - 25, pos.b[1] + 10, "B");
-                    createLabel(pos.c[0] - 25, pos.c[1] + 10, "C");
+                    createLabel(pos.a[0] - 25, pos.a[1] + 10, "A", puzzle.target === 'a');
+                    createLabel(pos.b[0] - 25, pos.b[1] + 10, "B", puzzle.target === 'b');
+                    createLabel(pos.c[0] - 25, pos.c[1] + 10, "C", puzzle.target === 'c');
                     createLabel(pos.out[0] + 50, pos.out[1] + 10, "OUT");
 
                     createNode(pos.a, puzzle.a, !isRev('a'), false, true, puzzle.target === 'a' && !reveal);
@@ -825,18 +858,19 @@
         };
 
         function resetScore() {
-            if (confirm("Reset Game and progress?")) {
-                scoreData = { total: 0, streak: 0, level: 1 };
-                document.getElementById('levelSelect').value = 1;
-                updateScoreboard();
-                setupLevel();
-            }
+            // Removed confirm dialog as it might be blocking/confusing in some web wrappers
+            scoreData = { total: 0, streak: 0, level: 1 };
+            document.getElementById('levelSelect').value = 1;
+            updateScoreboard();
+            setupLevel();
         }
 
         function setupLevel() {
             document.getElementById('feedback').innerHTML = "";
             document.getElementById('btnNext').style.display = "none";
             document.getElementById('guess-controls').style.display = "block";
+            document.getElementById('valid-combinations-area').style.display = "none";
+            document.getElementById('scratch-input-area').style.display = "block";
 
             scoreData.level = parseInt(document.getElementById('levelSelect').value);
             localStorage.setItem('lightsRiddleV4', JSON.stringify(scoreData));
@@ -923,6 +957,9 @@
                     currentP.prob = t.prob;
                     currentP.ones = t.ones;
                     currentP.total = t.total;
+                    currentP.validConfigs = validConfigs;
+                    currentP.hintUsed = false;
+                    currentP.hintConfig = null;
                     puzzle = currentP;
                 }
             }
@@ -930,6 +967,35 @@
             render(false);
             if (document.getElementById('scratch-textarea')) document.getElementById('scratch-textarea').value = '';
             document.getElementById('target-label').innerText = "Target is " + puzzle.target.toUpperCase() + ": Can you guess if it's ON or OFF?";
+            document.getElementById('hint-area').style.display = scoreData.total >= 30 ? "none" : "block";
+            document.getElementById('btnHint').style.display = "block";
+        }
+
+        let originalPuzzleState = null;
+
+        function showHintVisual() {
+            if (!puzzle.hintConfig) {
+                puzzle.hintConfig = puzzle.validConfigs[Math.floor(Math.random() * puzzle.validConfigs.length)];
+                puzzle.hintUsed = true;
+            }
+
+            if (!originalPuzzleState) {
+                originalPuzzleState = Object.assign({}, puzzle);
+            }
+            // Swap node booleans with the parsed test configuration
+            Object.assign(puzzle, puzzle.hintConfig.p);
+
+            document.getElementById('board').classList.add('imagination-mode');
+            render(true); // Temporarily reveal the imaginary state
+        }
+
+        function hideHintVisual() {
+            if (originalPuzzleState) {
+                Object.assign(puzzle, originalPuzzleState);
+                originalPuzzleState = null;
+                document.getElementById('board').classList.remove('imagination-mode');
+                render(false); // Go back to normal unrevealed state
+            }
         }
 
         function render(reveal) {
@@ -965,9 +1031,10 @@
             document.getElementById('board').appendChild(g);
         }
 
-        function createLabel(x, y, txt) {
+        function createLabel(x, y, txt, isTarget) {
             const l = document.createElement('div');
             l.className = 'node-label';
+            if (isTarget) l.style.color = 'var(--accent)';
             l.style.left = x + 'px'; l.style.top = y + 'px';
             l.innerText = txt;
             document.getElementById('board').appendChild(l);
@@ -997,31 +1064,39 @@
             let p_chosen = guessBool ? puzzle.prob : (1 - puzzle.prob);
 
             // Scale reward by Trope Complexity and Board Level
-            let diffMult = puzzle.trope.multiplier * scoreData.level;
+            let levelMult = scoreData.level === 1 ? 1 : scoreData.level === 2 ? 1.5 : 2;
+            let diffMult = puzzle.trope.multiplier * levelMult;
 
             let reward = Math.round(10 * p_chosen * diffMult);
             let penalty = Math.round(10 * (1 - p_chosen) * diffMult);
 
+            if (puzzle.hintUsed) {
+                reward = Math.max(1, Math.floor(reward * 0.5));
+            }
+
             let pickedProbPercent = Math.round(p_chosen * 100);
             let onesCount = guessBool ? puzzle.ones : puzzle.total - puzzle.ones;
 
-            let msg = `Out of ${puzzle.total} working combinations, ${puzzle.target.toUpperCase()} is ${guessBool ? 'ON' : 'OFF'} in ${onesCount} of them (${pickedProbPercent}% chance).<br>`;
+            let msg = ``;
 
             if (isCorrect) {
+                if (puzzle.hintUsed) {
+                    msg += `<span style="color: var(--on); font-size: 0.9em; display: block; margin-bottom: 5px;">(Reward halved for using a hint!)</span>`;
+                }
                 if (isRational) {
-                    msg += `Smart guess! The math was on your side! (+${reward} pts)`;
+                    msg += `Correct! Your choice happens in ${onesCount} out of ${puzzle.total} possible ways, it was a safe bet! (+${reward} pts)`;
                 } else {
-                    msg += `You got lucky against the odds! But because you picked the risky choice, your reward is small! (+${reward} pts)`;
+                    msg += `Correct! Your choice only happens in ${onesCount} out of ${puzzle.total} possible ways, you got lucky! (+${reward} pts)`;
                 }
                 fb.style.color = "#4ade80";
                 scoreData.total += reward;
                 scoreData.streak++;
             } else {
                 if (isRational) {
-                    msg += `You got unlucky! But because you made the mathematically smart choice, your penalty is small! (-${penalty} pts)`;
+                    msg += `Sorry! Your choice happens in ${onesCount} out of ${puzzle.total} possible ways, but you were unlucky this time. (-${penalty} pts)`;
                     fb.style.color = "#fbbf24";
                 } else {
-                    msg += `Oops! You made a mathematically terrible guess and missed. That's a big penalty! (-${penalty} pts)`;
+                    msg += `Sorry! Your choice only happens in ${onesCount} out of ${puzzle.total} possible ways, so it was a risky bet! (-${penalty} pts)`;
                     fb.style.color = "#ef4444";
                 }
                 scoreData.total = Math.max(0, scoreData.total - penalty);
@@ -1033,9 +1108,37 @@
             updateScoreboard();
         }
 
+        function showAllCombinations() {
+            document.getElementById('scratch-input-area').style.display = "none";
+            const container = document.getElementById('valid-combinations-area');
+            let txt = "<div class='section-title' style='margin-bottom: 10px;'>All Possibilities</div>";
+            txt += "<div style='display:flex; flex-direction:column; gap:8px;'>";
+
+            let sortedHidden = [...puzzle.hidden].sort();
+            let sortedConfigs = [...puzzle.validConfigs].sort((a, b) => {
+                for (let k of sortedHidden) {
+                    if (a.state[k] !== b.state[k]) return (a.state[k] ? 1 : 0) - (b.state[k] ? 1 : 0);
+                }
+                return 0;
+            });
+
+            sortedConfigs.forEach((config, idx) => {
+                let comboString = sortedHidden
+                    .map(k => `<span style="color:var(--accent);">${k.toUpperCase()}:</span> <span style="display:inline-block; width:32px;">${config.state[k] ? '<span class="s-on">ON</span>' : '<span style="color:grey;font-weight:bold;">OFF</span>'}</span>`)
+                    .join(", ");
+                txt += `<div style='background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:6px; font-size:0.95rem; border: 1px solid #334155;'>${comboString}</div>`;
+            });
+            txt += "</div>";
+
+            container.innerHTML = txt;
+            container.style.display = "block";
+        }
+
         function endRound(success) {
             render(true);
             document.getElementById('guess-controls').style.display = "none";
+            document.getElementById('hint-area').style.display = "none";
+            showAllCombinations();
             document.getElementById('btnNext').style.display = "block";
             localStorage.setItem('lightsRiddleV4', JSON.stringify(scoreData));
         }
