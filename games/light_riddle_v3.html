@@ -1067,8 +1067,8 @@
             let levelMult = scoreData.level === 1 ? 1 : scoreData.level === 2 ? 1.5 : 2;
             let diffMult = puzzle.trope.multiplier * levelMult;
 
-            let reward = Math.round(10 * p_chosen * diffMult);
-            let penalty = Math.round(10 * (1 - p_chosen) * diffMult);
+            let reward = Math.round(10 * (1 - p_chosen) * diffMult);
+            let penalty = Math.round(10 * p_chosen * diffMult);
 
             if (puzzle.hintUsed) {
                 reward = Math.max(1, Math.floor(reward * 0.5));
