@@ -1124,8 +1124,8 @@
 
             sortedConfigs.forEach((config, idx) => {
                 let comboString = sortedHidden
-                    .map(k => `<span style="color:var(--accent);">${k.toUpperCase()}:</span> <span style="display:inline-block; width:32px;">${config.state[k] ? '<span class="s-on">ON</span>' : '<span style="color:grey;font-weight:bold;">OFF</span>'}</span>`)
-                    .join(", ");
+                    .map(k => `<span style="color:var(--accent);">${k.toUpperCase()}:</span> <span style="display:inline-block; width:32px;">${config.state[k] ? '<span class="s-on">1</span>' : '<span style="color:grey;font-weight:bold;">0</span>'}</span>`)
+                    .join(" ");
                 txt += `<div style='background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:6px; font-size:0.95rem; border: 1px solid #334155;'>${comboString}</div>`;
             });
             txt += "</div>";
