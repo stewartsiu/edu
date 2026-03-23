@@ -103,7 +103,7 @@
         /* CIRCUIT VISUALS */
         .circuit-board {
             display: block;
-            margin: 30px auto;
+            margin: 10px auto;
             position: relative;
             height: 450px;
             width: 850px;
@@ -447,6 +447,13 @@
                         <option value="3">3 (7 Gates, 3 Hidden)</option>
                     </select>
                 </div>
+                <div
+                    style="display: flex; align-items: center; margin-left: 15px; background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 4px; border: 1px solid var(--accent);">
+                    <input type="checkbox" id="noUnluckyMode" onchange="toggleNoUnlucky()"
+                        style="cursor: pointer; margin-right: 5px; accent-color: var(--accent);">
+                    <label for="noUnluckyMode"
+                        style="color:var(--accent); font-size: 0.95rem; font-weight: bold; cursor: pointer;">No-Unlucky</label>
+                </div>
             </div>
             <button class="btn-reset" onclick="resetScore()">Reset Game</button>
         </div>
@@ -468,7 +475,7 @@
             <button id="btnHint" class="game-btn" onmousedown="showHintVisual()" onmouseup="hideHintVisual()"
                 onmouseleave="hideHintVisual()" ontouchstart="showHintVisual()" ontouchend="hideHintVisual()"
                 style="margin: 0 auto; background: rgba(192, 132, 252, 0.2); border-color: var(--level); color: var(--text); padding: 10px 15px; font-size: 0.95rem; cursor: pointer; user-select: none; touch-action: none;">
-                💡 Hold to see one that could work (No promises!) (Cost: Half points)
+                💡 Hint: See one possible combination (BUT NOT the only one!) (Cost: Half points)
             </button>
         </div>
 
@@ -477,8 +484,8 @@
         <div id="interaction-area">
             <div id="guess-controls">
                 <div id="target-label"
-                    style="font-size: 1.1rem; font-weight: bold; color: var(--accent); margin-bottom: 15px;">Target is
-                    X: Can you guess if it's ON or OFF?</div>
+                    style="font-size: 1.1rem; font-weight: bold; color: var(--accent); margin-bottom: 15px;">Guess
+                    X: Is it ON or OFF?</div>
                 <div class="options-grid">
                     <button class="game-btn btn-guess" onclick="submit(0)">
                         <span>Guess 0 (<span style="color:grey;font-weight:bold;">OFF</span>)</span>
@@ -613,9 +620,15 @@
     <script>
         const gateTypes = ['AND', 'OR', 'XOR'];
         let puzzle = {};
-        let scoreData = JSON.parse(localStorage.getItem('lightsRiddleV4')) || { total: 0, streak: 0, level: 1 };
+        let scoreData = JSON.parse(localStorage.getItem('lightsRiddleV4')) || { total: 0, streak: 0, level: 1, noUnlucky: false };
 
-        document.getElementById('levelSelect').value = scoreData.level;
+        document.getElementById('levelSelect').value = scoreData.level || 1;
+        document.getElementById('noUnluckyMode').checked = !!scoreData.noUnlucky;
+
+        function toggleNoUnlucky() {
+            scoreData.noUnlucky = document.getElementById('noUnluckyMode').checked;
+            localStorage.setItem('lightsRiddleV4', JSON.stringify(scoreData));
+        }
 
         // Evaluate Gate Logic
         function runGate(v1, v2, type) {
@@ -859,7 +872,7 @@
 
         function resetScore() {
             // Removed confirm dialog as it might be blocking/confusing in some web wrappers
-            scoreData = { total: 0, streak: 0, level: 1 };
+            scoreData = { total: 0, streak: 0, level: 1, noUnlucky: document.getElementById('noUnluckyMode').checked };
             document.getElementById('levelSelect').value = 1;
             updateScoreboard();
             setupLevel();
@@ -966,7 +979,7 @@
 
             render(false);
             if (document.getElementById('scratch-textarea')) document.getElementById('scratch-textarea').value = '';
-            document.getElementById('target-label').innerText = "Target is " + puzzle.target.toUpperCase() + ": Can you guess if it's ON or OFF?";
+            document.getElementById('target-label').innerText = "Guess " + puzzle.target.toUpperCase() + ": Is it ON or OFF?";
             document.getElementById('hint-area').style.display = scoreData.total >= 30 ? "none" : "block";
             document.getElementById('btnHint').style.display = "block";
         }
@@ -1001,6 +1014,7 @@
         function render(reveal) {
             const board = document.getElementById('board');
             board.innerHTML = '';
+            board.style.height = scoreData.level === 1 ? '320px' : '400px';
             const isRev = (k) => reveal || !puzzle.hidden.includes(k);
             puzzle.template.render(reveal, isRev);
         }
@@ -1063,12 +1077,18 @@
 
             let p_chosen = guessBool ? puzzle.prob : (1 - puzzle.prob);
 
-            // Scale reward by Trope Complexity and Board Level
             let levelMult = scoreData.level === 1 ? 1 : scoreData.level === 2 ? 1.5 : 2;
             let diffMult = puzzle.trope.multiplier * levelMult;
 
-            let reward = Math.round(10 * (1 - p_chosen) * diffMult);
-            let penalty = Math.round(10 * p_chosen * diffMult);
+            let reward = Math.round(10 * diffMult);
+            let penalty = Math.round(10 * diffMult);
+
+            if (scoreData.noUnlucky) {
+                isCorrect = isRational;
+                if (isCorrect) {
+                    reward = 1;
+                }
+            }
 
             if (puzzle.hintUsed) {
                 reward = Math.max(1, Math.floor(reward * 0.5));
