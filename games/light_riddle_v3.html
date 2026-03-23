@@ -1073,7 +1073,7 @@
 
             const rationalBool = puzzle.prob > 0.5;
             const isRational = guessBool === rationalBool;
-            const isCorrect = guessBool === puzzle[puzzle.target];
+            let isCorrect = guessBool === puzzle[puzzle.target];
 
             let p_chosen = guessBool ? puzzle.prob : (1 - puzzle.prob);
 
@@ -1086,7 +1086,7 @@
             if (scoreData.noUnlucky) {
                 isCorrect = isRational;
                 if (isCorrect) {
-                    reward = 1;
+                    reward = 2;
                 }
             }
 
